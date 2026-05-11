@@ -74,7 +74,11 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. Build OpenAI response (direct mapping, no extra fetch needed)
-    const openaiResponse = runwareToOpenai(runwareResults, validated.responseFormat);
+    const host = request.headers.get("host") || "apigpuchiase.vercel.app";
+    const protocol = host.includes("localhost") ? "http" : "https";
+    const baseUrl = `${protocol}://${host}`;
+    
+    const openaiResponse = runwareToOpenai(runwareResults, validated.responseFormat, baseUrl);
 
     // 7. Log to Supabase (async, fire-and-forget)
     const totalCost = runwareResults.reduce((sum, r) => sum + (r.cost ?? 0), 0);

@@ -81,14 +81,18 @@ export function openaiToRunware(req: ValidatedRequest): RunwareTask[] {
   }];
 }
 
+import { encryptUrl } from "./cipher";
+
 /**
  * Convert Runware results into OpenAI Images API response format.
- * Maps `imageBase64Data` → `b64_json` and `imageURL` → `url`
- * depending on what Runware returned.
+ * Maps `imageBase64Data` → `b64_json`.
+ * If `responseFormat` is "url", masks the Runware URL by encrypting it
+ * and returning a proxy URL pointing to our own `/api/v1/images/view` endpoint.
  */
 export function runwareToOpenai(
   results: RunwareImageResult[],
   responseFormat: "b64_json" | "url",
+  baseUrl: string,
 ): OpenAIImagesResponse {
   return {
     created: Math.floor(Date.now() / 1000),
@@ -97,7 +101,7 @@ export function runwareToOpenai(
         ? { b64_json: r.imageBase64Data }
         : {}),
       ...(responseFormat === "url" && r.imageURL
-        ? { url: r.imageURL }
+        ? { url: `${baseUrl}/api/v1/images/view?id=${encryptUrl(r.imageURL)}` }
         : {}),
       revised_prompt: null,
     })),
