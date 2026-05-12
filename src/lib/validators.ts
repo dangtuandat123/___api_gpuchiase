@@ -129,24 +129,42 @@ export interface ValidatedEditRequest {
 }
 
 /**
+ * MIME types accepted for image uploads.
+ * Includes application/octet-stream because gateways (like ChiaseGPU)
+ * often strip the original Content-Type when forwarding multipart requests.
+ * This matches OpenAI's behavior which also accepts octet-stream.
+ */
+const ACCEPTED_IMAGE_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "image/webp",
+  "image/gif",
+  "application/octet-stream",
+]);
+
+/**
  * Convert an uploaded File to a Base64 Data URI string.
  * Used to pass images to Runware via `inputs.referenceImages`.
+ * Falls back to image/png for unknown MIME types (e.g. octet-stream).
  */
 async function fileToDataUri(file: File): Promise<string> {
   const buffer = Buffer.from(await file.arrayBuffer());
   const base64 = buffer.toString("base64");
-  const mimeType = file.type || "image/png";
+  // Use the actual type if it's a real image type, otherwise default to PNG
+  const mimeType = file.type && file.type.startsWith("image/") ? file.type : "image/png";
   return `data:${mimeType};base64,${base64}`;
 }
 
 /**
  * Validate a single uploaded image file.
- * Checks type (image/*) and size (≤4 MB).
+ * Checks type (image/* or octet-stream) and size (≤4 MB).
  */
 function validateImageFile(file: File, fieldName: string): void {
-  if (!file.type.startsWith("image/")) {
+  const fileType = file.type || "application/octet-stream";
+  if (!fileType.startsWith("image/") && !ACCEPTED_IMAGE_TYPES.has(fileType)) {
     throw new InvalidRequestError(
-      `'${fieldName}' must be an image file (received ${file.type || "unknown"}).`,
+      `'${fieldName}' must be an image file (received ${fileType}).`,
       fieldName,
       "invalid_file_type",
     );
