@@ -4,7 +4,7 @@
  * for transient errors (429, 503, 5xx).
  */
 
-import type { RunwareTask, RunwareImageResult } from "./transform";
+import type { RunwareTask, RunwareEditTask, RunwareImageResult } from "./transform";
 import { UpstreamError, RateLimitError, InternalError } from "./errors";
 
 const RUNWARE_API_URL = "https://api.runware.ai/v1";
@@ -35,7 +35,7 @@ interface RunwareErrorResponse {
  * @returns Array of RunwareImageResult
  * @throws ApiError on persistent failure
  */
-export async function callRunwareAPI(tasks: RunwareTask[]): Promise<RunwareImageResult[]> {
+export async function callRunwareAPI(tasks: (RunwareTask | RunwareEditTask)[]): Promise<RunwareImageResult[]> {
   const apiKey = process.env.RUNWARE_API_KEY;
   if (!apiKey) {
     throw new InternalError("RUNWARE_API_KEY is not configured.");

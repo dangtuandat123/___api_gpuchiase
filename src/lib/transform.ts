@@ -5,7 +5,7 @@
  */
 
 import { v4 as uuidv4 } from "uuid";
-import type { ValidatedRequest } from "./validators";
+import type { ValidatedRequest, ValidatedEditRequest } from "./validators";
 
 // ─── Runware types ───
 
@@ -107,3 +107,57 @@ export function runwareToOpenai(
     })),
   };
 }
+
+// ─── Image Edit transform ───
+
+/**
+ * Runware task payload for image editing via reference images.
+ * FLUX.2 Klein 9B uses `inputs.referenceImages` instead of
+ * seedImage/maskImage for its image editing capability.
+ */
+export interface RunwareEditTask {
+  taskType: "imageInference";
+  taskUUID: string;
+  model: string;
+  positivePrompt: string;
+  inputs: {
+    referenceImages: string[];
+  };
+  width: number;
+  height: number;
+  steps: number;
+  CFGScale: number;
+  numberResults: number;
+  outputType: "URL" | "base64Data" | "dataURI";
+  outputFormat: "JPG" | "PNG" | "WEBP";
+  includeCost: boolean;
+}
+
+/**
+ * Convert a validated OpenAI Images edit request into a Runware task.
+ * The uploaded image (and optional mask) are passed as reference images.
+ * The model uses these alongside the prompt to generate the edited output.
+ */
+export function openaiEditToRunware(req: ValidatedEditRequest): RunwareEditTask[] {
+  const referenceImages: string[] = [req.imageDataUri];
+  if (req.maskDataUri) {
+    referenceImages.push(req.maskDataUri);
+  }
+
+  return [{
+    taskType: "imageInference" as const,
+    taskUUID: uuidv4(),
+    model: RUNWARE_MODEL_ID,
+    positivePrompt: req.prompt,
+    inputs: { referenceImages },
+    width: req.width,
+    height: req.height,
+    steps: DEFAULT_STEPS,
+    CFGScale: DEFAULT_CFG_SCALE,
+    numberResults: req.n,
+    outputType: req.responseFormat === "b64_json" ? "base64Data" as const : "URL" as const,
+    outputFormat: "PNG" as const,
+    includeCost: true,
+  }];
+}
+

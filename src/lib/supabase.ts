@@ -42,6 +42,8 @@ export interface RequestLogEntry {
   error_message?: string | null;
   latency_ms: number;
   consumer_ip?: string | null;
+  /** Distinguishes generation vs edit requests in logs */
+  request_type?: "generation" | "edit";
 }
 
 /**
